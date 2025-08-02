@@ -9,6 +9,8 @@
     <version>1.0-SNAPSHOT</version>
     <modules>
         <module>common</module>
+        <module>hotel-service</module>
+        <module>payment-service</module>
     </modules>
     <packaging>pom</packaging>
     <name>Hotel Booking - Saga Orchestration</name>
