@@ -1,4 +1,4 @@
-package org.example.enumerations;
+package org.example.common.enumerations;
 
 public enum SagaState {
     STARTED,
