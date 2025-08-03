@@ -9,15 +9,19 @@ import org.example.common.command.ReserveRoomCommand;
 import org.example.common.dto.ReservationDto;
 import org.example.hotelservice.entity.IdempotencyRecord;
 import org.example.hotelservice.entity.Reservation;
+import org.example.hotelservice.entity.RoomAvailability;
 import org.example.hotelservice.enumeration.ReservationStatus;
 import org.example.hotelservice.repository.IdempotencyRepository;
 import org.example.hotelservice.repository.ReservationRepository;
+import org.example.hotelservice.repository.RoomAvailabilityRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -26,31 +30,31 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class HotelService {
-    
+
     private final ReservationRepository reservationRepository;
+    private final RoomAvailabilityRepository roomAvailabilityRepository;
     private final IdempotencyRepository idempotencyRepository;
     private final ObjectMapper objectMapper;
     private final Random random = new Random();
-    
+
     @Value("${hotel.simulation.delay:0}")
     private int simulationDelay;
-    
+
     @Value("${hotel.simulation.failure-rate:0.0}")
     private double failureRate;
-    
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+
     public CommandResult<ReservationDto> reserveRoom(ReserveRoomCommand command) {
         log.info("Processing room reservation for saga: {}", command.getSagaId());
-        
-        // Check idempotency
+
+        // Check idempotency first (outside transaction)
         Optional<IdempotencyRecord> existingRecord =
-            idempotencyRepository.findById(command.getIdempotencyKey());
-        
+                idempotencyRepository.findById(command.getIdempotencyKey());
+
         if (existingRecord.isPresent()) {
             log.info("Idempotent request detected for key: {}", command.getIdempotencyKey());
             try {
                 ReservationDto cachedResult = objectMapper.readValue(
-                    existingRecord.get().getResultData(), ReservationDto.class);
+                        existingRecord.get().getResultData(), ReservationDto.class);
                 return CommandResult.success(cachedResult);
             } catch (Exception e) {
                 log.error("Failed to deserialize cached result", e);
@@ -62,92 +66,107 @@ public class HotelService {
         if (shouldSimulateFailure()) {
             return CommandResult.failure("Simulated hotel service failure", "HOTEL_SERVICE_ERROR");
         }
-        
+
         try {
-            // Check room availability with pessimistic locking
-            long conflictingReservations = reservationRepository.countConflictingReservations(
-                command.getHotelId(), command.getRoomType(), 
-                command.getCheckIn(), command.getCheckOut());
-            
-            if (conflictingReservations > 0) {
-                return CommandResult.failure("Room not available for the requested dates", 
-                                           "ROOM_NOT_AVAILABLE");
-            }
-            
-            // Create reservation
-            Reservation reservation = new Reservation();
-            reservation.setReservationId(UUID.randomUUID().toString());
-            reservation.setHotelId(command.getHotelId());
-            reservation.setRoomType(command.getRoomType());
-            reservation.setCheckIn(command.getCheckIn());
-            reservation.setCheckOut(command.getCheckOut());
-            reservation.setGuestName(command.getGuestName());
-            reservation.setRoomPrice(command.getRoomPrice());
-            reservation.setStatus(ReservationStatus.PENDING);
-            
-            reservation = reservationRepository.save(reservation);
-            
-            ReservationDto result = mapToDto(reservation);
-            
-            // Store idempotency record
-            storeIdempotencyRecord(command.getIdempotencyKey(), result);
-            
-            log.info("Room reserved successfully: {}", reservation.getReservationId());
-            return CommandResult.success(result);
-            
-        } catch (OptimisticLockingFailureException e) {
-            log.warn("Optimistic locking failure for saga: {}", command.getSagaId());
-            return CommandResult.failure("Concurrent modification detected", "OPTIMISTIC_LOCK_FAILURE");
+            return attemptReservation(command);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Room not available for saga: {} - constraint violation", command.getSagaId());
+            return CommandResult.failure("Room not available for the requested dates", "ROOM_NOT_AVAILABLE");
         } catch (Exception e) {
             log.error("Failed to reserve room for saga: " + command.getSagaId(), e);
             return CommandResult.failure("Internal server error", "INTERNAL_ERROR");
         }
     }
-    
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+
+    @Transactional
+    private CommandResult<ReservationDto> attemptReservation(ReserveRoomCommand command) {
+        // Create reservation first
+        Reservation reservation = new Reservation();
+        reservation.setReservationId(UUID.randomUUID().toString());
+        reservation.setHotelId(command.getHotelId());
+        reservation.setRoomType(command.getRoomType());
+        reservation.setCheckIn(command.getCheckIn());
+        reservation.setCheckOut(command.getCheckOut());
+        reservation.setGuestName(command.getGuestName());
+        reservation.setRoomPrice(command.getRoomPrice());
+        reservation.setStatus(ReservationStatus.PENDING);
+
+        reservation = reservationRepository.save(reservation);
+
+        // Create availability records for each date
+        List<RoomAvailability> availabilityRecords = new ArrayList<>();
+        LocalDate currentDate = command.getCheckIn();
+
+        while (currentDate.isBefore(command.getCheckOut())) {
+            RoomAvailability availability = new RoomAvailability();
+            availability.setHotelId(command.getHotelId());
+            availability.setRoomType(command.getRoomType());
+            availability.setDate(currentDate);
+            availability.setReservationId(reservation.getReservationId());
+            availabilityRecords.add(availability);
+            currentDate = currentDate.plusDays(1);
+        }
+
+        // This will fail with DataIntegrityViolationException if room is already booked
+        roomAvailabilityRepository.saveAll(availabilityRecords);
+
+        ReservationDto result = mapToDto(reservation);
+
+        // Store idempotency record
+        storeIdempotencyRecord(command.getIdempotencyKey(), result);
+
+        log.info("Room reserved successfully: {}", reservation.getReservationId());
+        return CommandResult.success(result);
+    }
+
+    @Transactional
     public CommandResult<Void> releaseRoom(ReleaseRoomCommand command) {
         log.info("Processing room release for reservation: {}", command.getReservationId());
-        
+
         // Check idempotency
-        Optional<IdempotencyRecord> existingRecord = 
-            idempotencyRepository.findById(command.getIdempotencyKey());
-        
+        Optional<IdempotencyRecord> existingRecord =
+                idempotencyRepository.findById(command.getIdempotencyKey());
+
         if (existingRecord.isPresent()) {
             log.info("Idempotent request detected for key: {}", command.getIdempotencyKey());
             return CommandResult.success(null);
         }
-        
+
         try {
-            Optional<Reservation> reservationOpt = 
-                reservationRepository.findByIdForUpdate(command.getReservationId());
-            
+            Optional<Reservation> reservationOpt =
+                    reservationRepository.findById(command.getReservationId());
+
             if (reservationOpt.isEmpty()) {
                 return CommandResult.failure("Reservation not found", "RESERVATION_NOT_FOUND");
             }
-            
+
             Reservation reservation = reservationOpt.get();
-            
+
             if (reservation.getStatus() == ReservationStatus.RELEASED) {
                 log.info("Reservation already released: {}", command.getReservationId());
                 storeIdempotencyRecord(command.getIdempotencyKey(), null);
                 return CommandResult.success(null);
             }
-            
+
+            // Update reservation status
             reservation.setStatus(ReservationStatus.RELEASED);
             reservationRepository.save(reservation);
-            
+
+            // Remove availability records
+            roomAvailabilityRepository.deleteByReservationId(command.getReservationId());
+
             // Store idempotency record
             storeIdempotencyRecord(command.getIdempotencyKey(), null);
-            
+
             log.info("Room released successfully: {}", command.getReservationId());
             return CommandResult.success(null);
-            
+
         } catch (Exception e) {
             log.error("Failed to release room: " + command.getReservationId(), e);
             return CommandResult.failure("Internal server error", "INTERNAL_ERROR");
         }
     }
-    
+
     private void simulateDelay() {
         if (simulationDelay > 0) {
             try {
@@ -157,11 +176,11 @@ public class HotelService {
             }
         }
     }
-    
+
     private boolean shouldSimulateFailure() {
         return random.nextDouble() < failureRate;
     }
-    
+
     private void storeIdempotencyRecord(String key, Object result) {
         try {
             IdempotencyRecord record = new IdempotencyRecord();
@@ -172,7 +191,7 @@ public class HotelService {
             log.error("Failed to store idempotency record", e);
         }
     }
-    
+
     private ReservationDto mapToDto(Reservation reservation) {
         ReservationDto dto = new ReservationDto();
         dto.setReservationId(reservation.getReservationId());

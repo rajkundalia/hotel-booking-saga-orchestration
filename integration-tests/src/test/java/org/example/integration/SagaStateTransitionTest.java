@@ -5,6 +5,8 @@ import org.example.common.enumerations.SagaState;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SagaStateTransitionTest {
@@ -70,7 +72,9 @@ public class SagaStateTransitionTest {
     @Test
     void sagaInstance_SagaExpiration_IsExpiredWhenExpirationTimePassed() {
         SagaInstance saga = new SagaInstance();
-        // Saga is created with expiresAt set to now + 30 minutes
+        // Saga is created with expiresAt set to now + 30 minutes in prePersist method and createdAt is now, to simulate it here:
+        saga.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        saga.setCreatedAt(LocalDateTime.now());
         assertFalse(saga.isExpired());
         
         // Simulate expiration

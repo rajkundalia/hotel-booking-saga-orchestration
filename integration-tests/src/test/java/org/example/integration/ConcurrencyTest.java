@@ -3,6 +3,7 @@ package org.example.integration;
 import org.example.common.command.CommandResult;
 import org.example.common.command.ReserveRoomCommand;
 import org.example.common.dto.ReservationDto;
+import org.example.hotelservice.HotelServiceApplication;
 import org.example.hotelservice.entity.Reservation;
 import org.example.hotelservice.enumeration.ReservationStatus;
 import org.example.hotelservice.repository.ReservationRepository;
@@ -23,8 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = HotelServiceApplication.class)
 @DirtiesContext
+/*
+@DirtiesContext is a Spring test annotation that tells the framework to close and recreate the ApplicationContext after a test.
+This ensures that a new, clean context is used for subsequent tests, preventing state changes from one test from affecting others.
+It's useful for integration tests that modify the application's global state, but it can slow down your test suite.
+ */
 public class ConcurrencyTest {
 
     @Autowired
