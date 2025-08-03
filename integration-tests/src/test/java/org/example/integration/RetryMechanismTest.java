@@ -1,5 +1,6 @@
 package org.example.integration;
 
+import org.example.bookingservice.BookingServiceApplication;
 import org.example.bookingservice.entity.SagaInstance;
 import org.example.bookingservice.repository.SagaInstanceRepository;
 import org.example.bookingservice.service.SagaOrchestrator;
@@ -17,7 +18,7 @@ import java.util.Optional;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = BookingServiceApplication.class)
 @TestPropertySource(properties = {
         "services.hotel.url=http://localhost:8081",
         "services.payment.url=http://localhost:8082",
@@ -34,6 +35,15 @@ public class RetryMechanismTest {
     private SagaInstanceRepository sagaRepository;
 
     // Retry of failed operations
+    /*
+     * Verifies that the saga retry and compensation mechanisms work correctly
+     * under high failure rate conditions.
+     *
+     * - Starts a booking saga with simulated downstream hotel/payment services set to fail most requests.
+     * - Asserts that retries are attempted based on the retry policy.
+     * - Checks that the saga transitions to a compensating/cancelled state after exceeding max retries,
+     *   ensuring failed bookings are eventually rolled back and not left in an inconsistent state.
+     */
     @Test
     void sagaBooking_HighFailureRate_RetriesAndCompensates() {
         // Given
