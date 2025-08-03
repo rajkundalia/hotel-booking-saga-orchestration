@@ -3,6 +3,7 @@ package org.example.integration;
 import org.example.common.command.CommandResult;
 import org.example.common.command.ReserveRoomCommand;
 import org.example.common.dto.ReservationDto;
+import org.example.hotelservice.HotelServiceApplication;
 import org.example.hotelservice.entity.IdempotencyRecord;
 import org.example.hotelservice.repository.IdempotencyRepository;
 import org.example.hotelservice.service.HotelService;
@@ -20,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = HotelServiceApplication.class)
 @TestPropertySource(properties = {
         "hotel.simulation.delay=0",
         "hotel.simulation.failure-rate=0.0"
@@ -33,6 +34,18 @@ public class IdempotencyTest {
     @Autowired
     private IdempotencyRepository idempotencyRepository;
 
+    /**
+     * Tests that executing the same ReserveRoomCommand twice with the same idempotency key
+     * will return the cached result, ensuring idempotency is implemented correctly.
+     *
+     * The test:
+     * - Issues a ReserveRoomCommand for the first time, checks for a successful reservation,
+     *   and verifies the creation of an IdempotencyRecord.
+     *
+     * - Repeats the command execution with the same idempotency key, and asserts the
+     *   reservation is successful and the reservation ID remains unchanged, confirming
+     *   the result is retrieved from the cache rather than creating a duplicate reservation.
+     */
     @Test
     void reserveRoomCommand_DuplicateKey_ReturnsCachedResult() {
         // Given

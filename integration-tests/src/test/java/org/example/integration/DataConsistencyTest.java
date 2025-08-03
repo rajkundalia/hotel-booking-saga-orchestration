@@ -1,5 +1,6 @@
 package org.example.integration;
 
+import org.example.hotelservice.HotelServiceApplication;
 import org.example.hotelservice.entity.Reservation;
 import org.example.hotelservice.enumeration.ReservationStatus;
 import org.example.hotelservice.repository.ReservationRepository;
@@ -18,14 +19,26 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-@SpringBootTest
+@SpringBootTest(classes = HotelServiceApplication.class)
 @DirtiesContext
 public class DataConsistencyTest {
 
     @Autowired
     private ReservationRepository reservationRepository;
 
-    // Prevent Dirty Reads
+    /*
+     * Test to ensure that dirty reads are prevented under READ_COMMITTED isolation.
+     *
+     * Scenario:
+     * - A reservation is created and persisted.
+     * - Transaction 1 modifies the reservation status but does not commit immediately (simulating an uncommitted change).
+     * - Transaction 2 attempts to read the status of the same reservation while Transaction 1 is still in progress.
+     *
+     * Expectation:
+     * - Transaction 2 must NOT see the uncommitted change from Transaction 1 because the READ_COMMITTED isolation prevents dirty reads.
+     * - The reader should see the original committed status ("PENDING"), while the modifier sees the updated (but uncommitted) status ("CONFIRMED").
+     * - The test verifies that read and modified status differ, and that the read value is still the original committed one.
+     */
     @Test
     public void reservation_UncommittedUpdate_IsNotVisibleToConcurrentReader() throws ExecutionException, InterruptedException {
         // Given - Create a reservation
@@ -51,6 +64,25 @@ public class DataConsistencyTest {
         A fuzzy read, also known as a non-repeatable read, occurs when a transaction reads the same row or data
         item more than once and receives different values each time because another transaction has modified
         and committed changes to that data in the meantime
+     */
+    /*
+     * Test to demonstrate non-repeatable (fuzzy) reads under READ_COMMITTED isolation.
+     *
+     * Scenario:
+     * - A reservation is created and persisted.
+     * - The initial room price is read and stored (emulating a transactional snapshot).
+     * - In a separate transaction, the reservation's price is modified and committed.
+     * - The reservation is read again in the original context.
+     *
+     * Expectation:
+     * - The second read sees the updated value, different from the initially captured value,
+     *   illustrating a classic non-repeatable read: multiple reads in the same transaction/flow yield different results
+     *   because of a committed concurrent modification.
+     *
+     * - The test asserts that the snapshot price is unchanged but the latest read reflects the committed update.
+     *
+     * - This is allowed in READ_COMMITTED isolation and illustrates why sagas or business processes may choose to
+     *   stick to their initial snapshot instead of re-reading.
      */
     @Test
     void reservationPrice_ConcurrentModification_LeadsToNonRepeatableRead() {
