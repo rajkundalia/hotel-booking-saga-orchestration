@@ -27,7 +27,6 @@ import java.util.Objects;
 @Setter
 @ToString
 @RequiredArgsConstructor
-@NoArgsConstructor
 public class Reservation {
     @Id
     private String reservationId;

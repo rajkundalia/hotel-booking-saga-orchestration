@@ -26,7 +26,6 @@ import java.util.Objects;
 @Setter
 @ToString
 @RequiredArgsConstructor
-@NoArgsConstructor
 public class SagaInstance {
     @Id
     private String sagaId;
