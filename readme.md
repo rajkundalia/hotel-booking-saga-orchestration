@@ -1,18 +1,18 @@
-# 🚀 Spring Boot Saga Pattern - Orchestration (Multi-Module Educational Project)
+# Spring Boot Saga Pattern - Orchestration (Multi-Module Educational Project)
 
 A comprehensive multi-module Spring Boot project demonstrating the **Saga Orchestration Pattern** for a hotel booking system using centralized coordination.
 
-## 🎯 Learning Objectives
+## Learning Objectives
 
 This project demonstrates:
-- ✅ **Saga Orchestration Pattern** - Centralized coordination of distributed transactions
-- 🔄 **Local Compensating Transactions** - Rollback mechanisms for distributed failures
-- 🔑 **Idempotency and Retry Safety** - Safe command re-execution
-- ⏱️ **Timeout Detection and Handling** - Long-running transaction management
-- 🔐 **Concurrency and Consistency** - Handling dirty reads, lost updates, non-repeatable reads
-- 🧪 **Comprehensive Testing** - Integration tests for all scenarios
+- **Saga Orchestration Pattern** - Centralized coordination of distributed transactions
+- **Local Compensating Transactions** - Rollback mechanisms for distributed failures
+- **Idempotency and Retry Safety** - Safe command re-execution
+- **Timeout Detection and Handling** - Long-running transaction management
+- **Concurrency and Consistency** - Handling dirty reads, lost updates, non-repeatable reads
+- **Comprehensive Testing** - Integration tests for all scenarios
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The system implements the **Saga Orchestration Pattern** where the Booking Service acts as the central orchestrator, coordinating the saga steps:
 
@@ -29,19 +29,19 @@ The system implements the **Saga Orchestration Pattern** where the Booking Servi
 3. **Complete Booking** → Success path
 4. **Compensation** → Rollback on failures
 
-## 🧱 Project Structure
+## Project Structure
 
 ```
 saga-orchestration-hotel-booking/
 ├── booking-service/         # Orchestrator logic, saga flow management
 ├── hotel-service/           # Room availability, reservation, compensation
 ├── payment-service/         # Payment authorization, cancellation
-├── common-library/          # Shared models (DTOs, enums, commands, utils)
+├── common/                  # Shared models (DTOs, enums, commands, utils)
 ├── integration-tests/       # Comprehensive saga tests
 └── README.md
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -54,7 +54,7 @@ saga-orchestration-hotel-booking/
 | **Testing** | JUnit 5, Mockito, Spring Test |
 | **Logging** | SLF4J with correlation IDs |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Java 17+
@@ -65,7 +65,7 @@ saga-orchestration-hotel-booking/
 1. **Clone and build the project:**
 ```bash
 git clone <repository-url>
-cd saga-orchestration-hotel-booking
+cd hotel-booking-saga-orchestration
 mvn clean install
 ```
 
@@ -116,7 +116,7 @@ curl -X POST http://localhost:8080/api/booking \
 curl http://localhost:8080/api/booking/{sagaId}
 ```
 
-## 🔄 Saga Implementation Details
+## Saga Implementation Details
 
 ### State Machine
 The saga uses a state machine with the following states:
@@ -159,7 +159,7 @@ public void handleTimeouts() {
 }
 ```
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Test Categories
 
@@ -210,7 +210,7 @@ void shouldCompensateWhenPaymentFails() {
 }
 ```
 
-## 🔐 Data Consistency & Concurrency Control
+## Data Consistency & Concurrency Control
 
 ### Double Booking Prevention
 The system prevents double bookings using **database constraints** with a room availability table:
@@ -310,28 +310,14 @@ void conflictingSaves_ThrowsOptimisticLockingFailureException() {
 }
 ```
 
-### Database Schema
-```sql
--- Room availability with unique constraint
-CREATE TABLE room_availability (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    hotel_id BIGINT NOT NULL,
-    room_type VARCHAR(50) NOT NULL,
-    date DATE NOT NULL,
-    reservation_id VARCHAR(255) NOT NULL,
-    version BIGINT DEFAULT 0,
-    UNIQUE KEY uk_room_date (hotel_id, room_type, date)
-);
-```
-
 ### Why This Approach Works
-- ✅ **Race Condition Safe** - Database constraints are atomic
-- ✅ **Production Ready** - Used by major booking platforms
-- ✅ **Simple** - No complex locking logic required
-- ✅ **Scalable** - Works with any ACID database
-- ✅ **Reliable** - Cannot have double bookings by design
+- **Race Condition Safe** - Database constraints are atomic
+- **Production Ready** - Used by major booking platforms
+- **Simple** - No complex locking logic required
+- **Scalable** - Works with any ACID database
+- **Reliable** - Cannot have double bookings by design
 
-## ⚙️ Configuration
+## Configuration
 
 ### Simulation Parameters
 Control failure rates and delays for testing:
@@ -358,7 +344,7 @@ public class SagaInstance {
 }
 ```
 
-## 📊 Monitoring and Observability
+## Monitoring and Observability
 
 ### Correlation IDs
 All requests are traced with correlation IDs:
@@ -387,7 +373,7 @@ Key tables for understanding the system:
 - `idempotency_records` - Command deduplication
 - `saga_instances` - Orchestration state tracking
 
-## 🎓 Learning Paths
+## Learning Paths
 
 ### Beginner
 1. Run the happy path scenario
@@ -404,23 +390,7 @@ Key tables for understanding the system:
 2. Implement additional saga patterns
 3. Add monitoring and observability
 
-## 🚀 Next Steps
-
-### Potential Enhancements
-- **Spring State Machine** - Replace simple state machine
-- **Event Sourcing** - Add event store for saga history
-- **Distributed Tracing** - Add Zipkin/Jaeger integration
-- **Circuit Breaker** - Add resilience patterns
-- **Saga Visualization** - Web UI for saga monitoring
-
-### Production Considerations
-- **Message Queues** - Replace HTTP with async messaging
-- **Database per Service** - Separate databases for each service
-- **Security** - Add authentication and authorization
-- **Rate Limiting** - Prevent service overload
-- **Monitoring** - Add comprehensive observability stack
-
-## 📚 References
+## References
 
 - [Saga Pattern](https://microservices.io/patterns/data/saga.html)
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
@@ -428,7 +398,4 @@ Key tables for understanding the system:
 - [Distributed Systems Patterns](https://martinfowler.com/articles/patterns-of-distributed-systems/)
 
 ---
-
-**Happy Learning! 🎓**
-
-This project provides a solid foundation for understanding distributed transaction patterns in microservices architecture. Experiment with different scenarios and observe how the saga pattern handles complex distributed workflows.
+## Note: If there is a mistake that you notice, please drop me a message or raise a PR.
