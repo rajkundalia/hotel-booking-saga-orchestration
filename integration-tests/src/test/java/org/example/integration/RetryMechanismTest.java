@@ -1,11 +1,9 @@
 package org.example.integration;
 
-import org.example.bookingservice.BookingServiceApplication;
 import org.example.bookingservice.entity.SagaInstance;
 import org.example.bookingservice.repository.SagaInstanceRepository;
-import org.example.bookingservice.service.BookingService;
+import org.example.bookingservice.service.SagaOrchestrator;
 import org.example.common.dto.BookingRequest;
-import org.example.common.dto.BookingResponse;
 import org.example.common.enumerations.SagaState;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,53 +15,49 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(classes = BookingServiceApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @TestPropertySource(properties = {
         "services.hotel.url=http://localhost:8081",
         "services.payment.url=http://localhost:8082",
         "hotel.simulation.delay=100",
         "payment.simulation.delay=100",
-        "hotel.simulation.failure-rate=0.0",
-        "payment.simulation.failure-rate=0.0"
+        "hotel.simulation.failure-rate=0.8"  // High failure rate to test retries
 })
-class SagaOrchestrationHappyPathIT {
+public class RetryMechanismTest {
 
     @Autowired
-    private BookingService bookingService;
+    private SagaOrchestrator sagaOrchestrator;
 
     @Autowired
     private SagaInstanceRepository sagaRepository;
 
+    // Retry of failed operations
     @Test
-    void createBookingSaga_ValidRequest_CompletesSuccessfully() {
+    void sagaBooking_HighFailureRate_RetriesAndCompensates() {
         // Given
         BookingRequest request = createValidBookingRequest();
 
         // When
-        BookingResponse response = bookingService.createBooking(request);
+        String sagaId = sagaOrchestrator.startBookingSaga(request);
 
-        // Then
-        assertNotNull(response);
-        assertNotNull(response.getSagaId());
-        assertEquals("PROCESSING", response.getStatus());
-
-        // Wait for saga completion
+        // Then - Wait and verify retries are attempted
         await().untilAsserted(() -> {
-            Optional<SagaInstance> sagaOpt = sagaRepository.findById(response.getSagaId());
+            Optional<SagaInstance> sagaOpt = sagaRepository.findById(sagaId);
             assertTrue(sagaOpt.isPresent());
-            assertEquals(SagaState.BOOKING_COMPLETED, sagaOpt.get().getState());
-            assertNotNull(sagaOpt.get().getReservationId());
-            assertNotNull(sagaOpt.get().getAuthorizationId());
-        });
+            SagaInstance saga = sagaOpt.get();
 
-        // Verify final booking status
-        BookingResponse finalStatus = bookingService.getBookingStatus(response.getSagaId());
-        assertEquals("BOOKING_COMPLETED", finalStatus.getStatus());
-        assertEquals("Booking completed successfully", finalStatus.getMessage());
+            // Should have attempted retries
+            assertTrue(saga.getRetryCount() > 0);
+
+            // Should eventually be compensated after max retries
+            if (saga.getRetryCount() >= saga.getMaxRetries()) {
+                assertTrue(saga.getState() == SagaState.BOOKING_CANCELLED ||
+                        saga.getState() == SagaState.COMPENSATING ||
+                        saga.getState() == SagaState.COMPENSATION_COMPLETED);
+            }
+        });
     }
 
     private BookingRequest createValidBookingRequest() {

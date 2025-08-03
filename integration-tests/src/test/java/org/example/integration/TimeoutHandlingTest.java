@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @DirtiesContext
-class TimeoutHandlingTest {
+public class TimeoutHandlingTest {
 
     @Autowired
     private SagaInstanceRepository sagaRepository;

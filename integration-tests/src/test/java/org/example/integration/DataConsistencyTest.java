@@ -20,14 +20,14 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SpringBootTest
 @DirtiesContext
-class DataConsistencyTest {
+public class DataConsistencyTest {
 
     @Autowired
     private ReservationRepository reservationRepository;
 
     // Prevent Dirty Reads
     @Test
-    void reservation_UncommittedUpdate_IsNotVisibleToConcurrentReader() throws ExecutionException, InterruptedException {
+    public void reservation_UncommittedUpdate_IsNotVisibleToConcurrentReader() throws ExecutionException, InterruptedException {
         // Given - Create a reservation
         Reservation reservation = createTestReservation("dirty-read-test");
         reservation = reservationRepository.save(reservation);

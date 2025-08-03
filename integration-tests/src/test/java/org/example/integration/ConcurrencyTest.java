@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @DirtiesContext
-class ConcurrencyTest {
+public class ConcurrencyTest {
 
     @Autowired
     private HotelService hotelService;
@@ -34,7 +34,7 @@ class ConcurrencyTest {
     private ReservationRepository reservationRepository;
 
     @Test
-    void reserveRoomCommand_TwoConcurrentRequestsForSameRoom_OnlyOneSucceeds() throws ExecutionException, InterruptedException {
+    public void reserveRoomCommand_TwoConcurrentRequestsForSameRoom_OnlyOneSucceeds() throws ExecutionException, InterruptedException {
         // Given - Two concurrent reservation requests for same room
         ReserveRoomCommand command1 = createReserveRoomCommand("saga-1", "key-1");
         ReserveRoomCommand command2 = createReserveRoomCommand("saga-2", "key-2");
@@ -61,7 +61,7 @@ class ConcurrencyTest {
     }
 
     @Test
-    void reservationUpdate_ConflictingSaves_ThrowsOptimisticLockingFailureException() {
+    public void reservationUpdate_ConflictingSaves_ThrowsOptimisticLockingFailureException() {
         // Given - Create a reservation
         Reservation reservation = new Reservation();
         reservation.setReservationId("test-reservation-123");

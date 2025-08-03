@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "hotel.simulation.failure-rate=0.0",
         "payment.simulation.failure-rate=1.0"  // Force payment failure
 })
-class SagaCompensationIT {
+public class SagaCompensationIT {
 
     @Autowired
     private BookingService bookingService;

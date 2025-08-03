@@ -3,10 +3,11 @@ package org.example.integration;
 import org.example.bookingservice.entity.SagaInstance;
 import org.example.common.enumerations.SagaState;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class SagaStateTransitionTest {
+public class SagaStateTransitionTest {
     
     @Test
     void sagaInstance_ValidStateTransitions_TransitionsCorrectly() {

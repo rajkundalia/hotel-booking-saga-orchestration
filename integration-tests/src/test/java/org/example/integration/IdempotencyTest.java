@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "hotel.simulation.delay=0",
         "hotel.simulation.failure-rate=0.0"
 })
-class IdempotencyTest {
+public class IdempotencyTest {
 
     @Autowired
     private HotelService hotelService;
