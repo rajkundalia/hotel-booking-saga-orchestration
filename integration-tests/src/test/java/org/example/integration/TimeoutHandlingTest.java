@@ -1,5 +1,6 @@
 package org.example.integration;
 
+import org.example.bookingservice.BookingServiceApplication;
 import org.example.bookingservice.entity.SagaInstance;
 import org.example.bookingservice.repository.SagaInstanceRepository;
 import org.example.bookingservice.service.SagaTimeoutService;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = BookingServiceApplication.class)
 @DirtiesContext
 public class TimeoutHandlingTest {
 
@@ -31,6 +32,8 @@ public class TimeoutHandlingTest {
         saga.setSagaId("expired-saga-123");
         saga.setState(SagaState.STARTED);
         saga.setSagaData("{}");
+        saga = sagaRepository.save(saga);
+
         saga.setExpiresAt(LocalDateTime.now().minusMinutes(1)); // Already expired
         SagaInstance finalSaga = sagaRepository.save(saga);
 
@@ -41,6 +44,26 @@ public class TimeoutHandlingTest {
         await().untilAsserted(() -> {
             SagaInstance updatedSaga = sagaRepository.findById(finalSaga.getSagaId()).orElseThrow();
             assertTrue(updatedSaga.getRetryCount() > 0);
+        });
+    }
+
+    @Test
+    void retryFailedSagas_RetryableNonExpiredSagasExist_SagaIsRetried() {
+        // Given - Create a retryable saga that is NOT expired
+        SagaInstance saga = new SagaInstance();
+        saga.setSagaId("retryable-saga-456");
+        saga.setState(SagaState.ROOM_RESERVATION_FAILED);
+        saga.setSagaData("{}");
+        saga.setRetryCount(1);
+        SagaInstance finalSaga = sagaRepository.save(saga);
+
+        // When - Run retryFailedSagas
+        timeoutService.retryFailedSagas();
+
+        // Then - Saga should be retried (retryCount > 0)
+        await().untilAsserted(() -> {
+            SagaInstance updatedSaga = sagaRepository.findById(finalSaga.getSagaId()).orElseThrow();
+            assertTrue(updatedSaga.getRetryCount() > 1);
         });
     }
 }
