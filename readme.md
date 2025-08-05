@@ -1,3 +1,5 @@
+[![Java CI with Maven](https://github.com/rajkundalia/hotel-booking-saga-orchestration/actions/workflows/maven.yml/badge.svg)](https://github.com/rajkundalia/hotel-booking-saga-orchestration/actions/workflows/maven.yml)
+
 # Spring Boot Saga Pattern - Orchestration (Multi-Module Educational Project)
 
 A comprehensive multi-module Spring Boot project demonstrating the **Saga Orchestration Pattern** for a hotel booking system using centralized coordination.
