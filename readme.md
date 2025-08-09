@@ -4,6 +4,8 @@
 
 A comprehensive multi-module Spring Boot project demonstrating the **Saga Orchestration Pattern** for a hotel booking system using centralized coordination.
 
+## Note: Debug the test cases to understand the flow better rather than starting the application.
+
 ## Learning Objectives
 
 This project demonstrates:
@@ -12,7 +14,7 @@ This project demonstrates:
 - **Idempotency and Retry Safety** - Safe command re-execution
 - **Timeout Detection and Handling** - Long-running transaction management
 - **Concurrency and Consistency** - Handling dirty reads, lost updates, non-repeatable reads
-- **Comprehensive Testing** - Integration tests for all scenarios
+- **Testing** - Integration tests for all scenarios
 
 ## Architecture Overview
 
@@ -53,8 +55,7 @@ saga-orchestration-hotel-booking/
 | **Persistence** | H2 Database (in-memory) |
 | **Concurrency Control** | Database constraints + Optimistic locking |
 | **Build Tool** | Maven (multi-module) |
-| **Testing** | JUnit 5, Mockito, Spring Test |
-| **Logging** | SLF4J with correlation IDs |
+| **Testing** | JUnit 5, Mockito, Spring Test, WireMock |
 
 ## Quick Start
 
